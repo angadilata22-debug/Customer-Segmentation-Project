@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Segmentation Dashboard | Python & K-Means</title>
+    <style>
+        :root {
+            --primary: #1e3a8a;
+            --primary-light: #3b82f6;
+            --secondary: #0f766e;
+            --accent: #f59e0b;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --success: #10b981;
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            line-height: 1.5;
+            padding-bottom: 60px;
+        }
+        /* Header */
+        header {
+            background: linear-gradient(135deg, #1e3a8a 0%, #0f766e 100%);
+            color: white;
+            padding: 30px 20px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        .header-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            font-size: 1.05rem;
+            opacity: 0.9;
+            max-width: 800px;
+        }
+        .disclaimer-banner {
+            margin-top: 15px;
+            background: rgba(245, 158, 11, 0.2);
+            border-left: 4px solid #f59e0b;
+            padding: 10px 14px;
+            border-radius: 4px;
+            font-size: 0.88rem;
+        }
+        /* Navigation */
+        nav {
+            background: white;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            gap: 20px;
+            overflow-x: auto;
+            padding: 0 20px;
+        }
+        .nav-link {
+            padding: 16px 4px;
+            text-decoration: none;
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.95rem;
+            border-bottom: 2px solid transparent;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .nav-link:hover, .nav-link.active {
+            color: var(--primary-light);
+            border-bottom-color: var(--primary-light);
+        }
+        /* Main Layout */
+        main {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+        /* KPI Cards */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 35px;
+        }
+        .kpi-card {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+        }
+        .kpi-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        .kpi-title {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+        }
+        .kpi-value {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin: 6px 0;
+        }
+        .kpi-subtext {
+            font-size: 0.82rem;
+            color: var(--success);
+            font-weight: 500;
+        }
+        /* Section styling */
+        section {
+            margin-bottom: 45px;
+        }
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 10px;
+        }
+        .section-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+        .section-desc {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 20px;
+        }
+        /* Persona Cards */
+        .persona-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+        }
+        .persona-card {
+            background: white;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            padding: 22px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            position: relative;
+            overflow: hidden;
+        }
+        .persona-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+        }
+        .cluster-0::before { background: #1f77b4; }
+        .cluster-1::before { background: #ff7f0e; }
+        .cluster-2::before { background: #2ca02c; }
+        .cluster-3::before { background: #d62728; }
+        .cluster-4::before { background: #9467bd; }
+        .persona-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+        .persona-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+        .cluster-tag {
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 6px;
+            background: #eff6ff;
+            color: #1e40af;
+        }
+        .persona-desc {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 15px;
+        }
+        .strategy-box {
+            background: #f1f5f9;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 0.88rem;
+        }
+        .strategy-title {
+            font-weight: 700;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--secondary);
+            margin-bottom: 4px;
+        }
+        /* Image Grid */
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+        }
+        .gallery-item {
+            background: white;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            transition: all 0.2s;
+        }
+        .gallery-item:hover {
+            box-shadow: 0 6px 12px -2px rgba(0,0,0,0.12);
+            transform: translateY(-2px);
+        }
+        .gallery-img {
+            width: 100%;
+            height: 240px;
+            object-fit: cover;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border);
+            background: #f1f5f9;
+        }
+        .gallery-info {
+            padding: 15px;
+        }
+        .gallery-title {
+            font-weight: 700;
+            font-size: 1.05rem;
+            margin-bottom: 6px;
+        }
+        .gallery-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+        /* Table Controls & Styling */
+        .table-card {
+            background: white;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .table-toolbar {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+            justify-content: space-between;
+            background: #fafafa;
+        }
+        .search-box {
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            font-size: 0.9rem;
+            width: 260px;
+        }
+        .filter-select {
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            font-size: 0.9rem;
+            background: white;
+        }
+        .table-responsive {
+            max-height: 450px;
+            overflow-y: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.88rem;
+        }
+        th {
+            background: #f8fafc;
+            position: sticky;
+            top: 0;
+            padding: 12px 16px;
+            font-weight: 700;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
+        }
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        tr:hover td {
+            background-color: #f1f5f9;
+        }
+        /* Lightbox Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 999;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .modal-content {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            background: white;
+        }
+        .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: white;
+            font-size: 35px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="header-container">
+            <span class="badge">Machine Learning Internship Project</span>
+            <h1>Customer Segmentation Dashboard</h1>
+            <p class="subtitle">Interactive visualization of customer behavioral clustering using Python, Pandas, StandardScaler, and K-Means algorithm.</p>
+            <div class="disclaimer-banner">
+                <strong>Important Notice:</strong> This dataset is completely synthetic sample data generated using statistical distributions for educational demonstration. It does not represent real customer records of any actual commercial entity.
+            </div>
+        </div>
+    </header>
+
+    <!-- Sticky Navigation -->
+    <nav>
+        <div class="nav-container">
+            <a href="#overview" class="nav-link active">Overview & KPIs</a>
+            <a href="#personas" class="nav-link">Customer Personas (5 Segments)</a>
+            <a href="#clustering" class="nav-link">K-Means Visualizations</a>
+            <a href="#model-validation" class="nav-link">Elbow & Silhouette Evaluation</a>
+            <a href="#eda" class="nav-link">Exploratory Data Analysis</a>
+            <a href="#data-explorer" class="nav-link">Customer Data Explorer</a>
+        </div>
+    </nav>
+
+    <main>
+        <!-- KPI Metrics -->
+        <section id="overview">
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-title">Total Customers</div>
+                    <div class="kpi-value">250</div>
+                    <div class="kpi-subtext">Synthetic Records</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">Optimal Clusters (k)</div>
+                    <div class="kpi-value">5</div>
+                    <div class="kpi-subtext">Elbow & Silhouette Validated</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">Peak Silhouette Score</div>
+                    <div class="kpi-value">0.483</div>
+                    <div class="kpi-subtext">High Cluster Cohesion</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">WCSS (Inertia)</div>
+                    <div class="kpi-value">188.1</div>
+                    <div class="kpi-subtext">Clear Elbow Inflection</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">Avg Annual Income</div>
+                    <div class="kpi-value">$60.6k</div>
+                    <div class="kpi-subtext">Range: $15k - $140k</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">Avg Spending Score</div>
+                    <div class="kpi-value">52.6</div>
+                    <div class="kpi-subtext">Range: 1 - 99</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Customer Personas -->
+        <section id="personas">
+            <div class="section-header">
+                <h2 class="section-title">Discovered Customer Personas (5 Clusters)</h2>
+            </div>
+            <p class="section-desc">K-Means grouped the 250 customer profiles into five distinct behavioral segments with actionable commercial strategies.</p>
+            
+            <div class="persona-grid" id="personaCardsContainer">
+                <!-- Injected via JavaScript -->
+            </div>
+        </section>
+
+        <!-- K-Means Visualizations -->
+        <section id="clustering">
+            <div class="section-header">
+                <h2 class="section-title">Customer Cluster Visualizations</h2>
+            </div>
+            <p class="section-desc">Visual representations of customer clusters and their centroid locations. Click any image to view in full resolution.</p>
+
+            <div class="gallery-grid">
+                <div class="gallery-item">
+                    <img class="gallery-img" src="output/figures/09_customer_clusters_2d.png" alt="2D Customer Clusters" onclick="openModal(this.src)">
+                    <div class="gallery-info">
+                        <div class="gallery-title">2D Customer Clusters & Centroids</div>
+                        <div class="gallery-desc">Annual Income vs. Spending Score with cluster centroids marked as bold X icons.</div>
+                    </div>
+                </div>
+                <div class="gallery-item">
+                    <img class="gallery-img" src="output/figures/11_cluster_profile_comparison.png" alt="Cluster Profile Comparison" onclick="openModal(this.src)">
+                    <div class="gallery-info">
+                        <div class="gallery-title">Feature Profile Comparison</div>
+                        <div class="gallery-desc">Normalized comparative bar chart showing relative Age, Income, Spending, and Frequency per segment.</div>
+                    </div>
+                </div>
+                <div class="gallery-item">
+                    <img class="gallery-img" src="output/figures/10_customer_clusters_pairplot.png" alt="Cluster Pairplot" onclick="openModal(this.src)">
+                    <div class="gallery-info">
+                        <div class="gallery-title">Multi-Dimensional Cluster Pairplot</div>
+                        <div class="gallery-desc">High-dimensional scatterplot matrix across all 4 customer segmentation features.</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Model Evaluation -->
+        <section id="model-validation">
+            <div class="section-header">
+                <h2 class="section-title">Optimal Cluster Selection: Elbow & Silhouette Analysis</h2>
+            </div>
+            <p class="section-desc">Diagnostic curves justifying the mathematical selection of k = 5 clusters.</p>
+
+            <div class="gallery-grid">
+                <div class="gallery-item">
+                    <img class="gallery-img" src="output/figures/07_elbow_method.png" alt="Elbow Method" onclick="openModal(this.src)">
+                    <div class="gallery-info">
+                        <div class="gallery-title">The Elbow Method (WCSS / Inertia)</div>
+                        <div class="gallery-desc">Shows sharp drop in inertia from k=2 to k=5, reaching the optimal elbow point at k=5.</div>
+                    </div>
+                </div>
+                <div class="gallery-item">
+                    <img class="gallery-img" src="output/figures/08_silhouette_scores.png" alt="Silhouette Scores" onclick="openModal(this.src)">
+                    <div class="gallery-info">
+                        <div class="gallery-title">Silhouette Score Curve</div>
+                        <div class="gallery-desc">Confirms highest cluster cohesion and separation peak at k = 5 (score: 0.4829).</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Exploratory Data Analysis -->
+        <section id="eda">
+            <div class="section-header">
+                <h2 class="section-title">Exploratory Data Analysis (EDA)</h2>
+            </div>
+            <p class="section-desc">Statistical distributions and correlation patterns prior to model training.</p>
+
+            <div class="gallery-grid">
+                <div class="gallery-item">
+                    <img class="gallery-img" src="output/figures/01_age_distribution.png" alt="Age Distribution" onclick="openModal(this.src)">
+                    <div class="gallery-info">
+                        <div class="gallery-title">Customer Age Distribution</div>
+                        <div class="gallery-desc">Histogram and KDE curve showing customer ages (Mean: 38.8 years).</div>
+                    </div>
+                </div>
+                <div class="gallery-item">
+                    <img class="gallery-img" src="output/figures/02_income_distribution.png" alt="Income Distribution" onclick="openModal(this.src)">
+                    <div class="gallery-info">
+                        <div class="gallery-title">Annual Income Distribution</div>
+                        <div class="gallery-desc">Multi-modal spread of customer earnings (Mean: $60.6k).</div>
+                    </div>
+                </div>
+                <div class="gallery-item">
+                    <img class="gallery-img" src="output/figures/03_spending_score_distribution.png" alt="Spending Score Distribution" onclick="openModal(this.src)">
+                    <div class="gallery-info">
+                        <div class="gallery-title">Spending Score Distribution</div>
+                        <div class="gallery-desc">Retail engagement score spread from 1 to 100 (Mean: 52.6).</div>
+                    </div>
+                </div>
+                <div class="gallery-item">
+                    <img class="gallery-img" src="output/figures/04_purchase_frequency_distribution.png" alt="Purchase Frequency" onclick="openModal(this.src)">
+                    <div class="gallery-info">
+                        <div class="gallery-title">Purchase Frequency Distribution</div>
+                        <div class="gallery-desc">Annual transaction count distribution (Mean: 25.4 purchases/year).</div>
+                    </div>
+                </div>
+                <div class="gallery-item">
+                    <img class="gallery-img" src="output/figures/05_correlation_heatmap.png" alt="Correlation Heatmap" onclick="openModal(this.src)">
+                    <div class="gallery-info">
+                        <div class="gallery-title">Feature Correlation Matrix</div>
+                        <div class="gallery-desc">Heatmap quantifying linear relationships between customer features.</div>
+                    </div>
+                </div>
+                <div class="gallery-item">
+                    <img class="gallery-img" src="output/figures/06_income_vs_spending_scatter.png" alt="Income vs Spending Scatter" onclick="openModal(this.src)">
+                    <div class="gallery-info">
+                        <div class="gallery-title">Income vs. Spending Score Scatter</div>
+                        <div class="gallery-desc">Scatterplot revealing naturally emerging consumer clusters.</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Customer Data Explorer -->
+        <section id="data-explorer">
+            <div class="section-header">
+                <h2 class="section-title">Interactive Customer Data Explorer</h2>
+                <div>
+                    <span id="recordCountBadge" style="font-size: 0.9rem; font-weight: 600; color: var(--primary);">250 Customers</span>
+                </div>
+            </div>
+            <p class="section-desc">Filter and search through the segmented customer dataset with cluster labels and assigned persona names.</p>
+
+            <div class="table-card">
+                <div class="table-toolbar">
+                    <input type="text" id="searchInput" class="search-box" placeholder="Search by ID, Segment, Gender...">
+                    <select id="clusterFilter" class="filter-select">
+                        <option value="ALL">All Clusters</option>
+                        <option value="0">Cluster 0: Young Trendsetters</option>
+                        <option value="1">Cluster 1: Conservative High Earners</option>
+                        <option value="2">Cluster 2: Elite Loyal Shoppers</option>
+                        <option value="3">Cluster 3: Budget Conscious / At-Risk</option>
+                        <option value="4">Cluster 4: Balanced Mainstream</option>
+                    </select>
+                </div>
+                <div class="table-responsive">
+                    <table id="customerTable">
+                        <thead>
+                            <tr>
+                                <th>Customer ID</th>
+                                <th>Gender</th>
+                                <th>Age</th>
+                                <th>Income ($k)</th>
+                                <th>Spending Score</th>
+                                <th>Frequency (yr)</th>
+                                <th>Avg Cart ($)</th>
+                                <th>Cluster</th>
+                                <th>Persona Name</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <!-- Populated via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal for full size images -->
+    <div id="imageModal" class="modal" onclick="closeModal()">
+        <span class="close-btn">&times;</span>
+        <img class="modal-content" id="modalImg">
+    </div>
+
+    <script>
+        const customers = [{"CustomerID": 1143, "Gender": "Female", "Age": 50, "Annual_Income_k$": 98.7, "Spending_Score": 20, "Purchase_Frequency_Per_Year": 8, "Average_Transaction_Value_$": 107.5, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1007, "Gender": "Male", "Age": 31, "Annual_Income_k$": 26.1, "Spending_Score": 95, "Purchase_Frequency_Per_Year": 49, "Average_Transaction_Value_$": 71.18, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1098, "Gender": "Female", "Age": 40, "Annual_Income_k$": 78.1, "Spending_Score": 93, "Purchase_Frequency_Per_Year": 37, "Average_Transaction_Value_$": 175.24, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1061, "Gender": "Female", "Age": 32, "Annual_Income_k$": 92.4, "Spending_Score": 86, "Purchase_Frequency_Per_Year": 49, "Average_Transaction_Value_$": 229.12, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1113, "Gender": "Female", "Age": 44, "Annual_Income_k$": 104.2, "Spending_Score": 24, "Purchase_Frequency_Per_Year": 12, "Average_Transaction_Value_$": 109.1, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1182, "Gender": "Male", "Age": 32, "Annual_Income_k$": 22.5, "Spending_Score": 20, "Purchase_Frequency_Per_Year": 15, "Average_Transaction_Value_$": 49.25, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1198, "Gender": "Female", "Age": 52, "Annual_Income_k$": 42.7, "Spending_Score": 25, "Purchase_Frequency_Per_Year": 7, "Average_Transaction_Value_$": 51.41, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1185, "Gender": "Female", "Age": 51, "Annual_Income_k$": 27.8, "Spending_Score": 29, "Purchase_Frequency_Per_Year": 10, "Average_Transaction_Value_$": 44.96, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1010, "Gender": "Male", "Age": 27, "Annual_Income_k$": 38.8, "Spending_Score": 77, "Purchase_Frequency_Per_Year": 42, "Average_Transaction_Value_$": 111.23, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1105, "Gender": "Female", "Age": 41, "Annual_Income_k$": 96.7, "Spending_Score": 25, "Purchase_Frequency_Per_Year": 22, "Average_Transaction_Value_$": 88.87, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1201, "Gender": "Male", "Age": 55, "Annual_Income_k$": 51.7, "Spending_Score": 59, "Purchase_Frequency_Per_Year": 19, "Average_Transaction_Value_$": 86.88, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1217, "Gender": "Female", "Age": 36, "Annual_Income_k$": 45.1, "Spending_Score": 72, "Purchase_Frequency_Per_Year": 31, "Average_Transaction_Value_$": 74.9, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1237, "Gender": "Female", "Age": 31, "Annual_Income_k$": 68.3, "Spending_Score": 61, "Purchase_Frequency_Per_Year": 19, "Average_Transaction_Value_$": 110.17, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1241, "Gender": "Female", "Age": 57, "Annual_Income_k$": 57.3, "Spending_Score": 47, "Purchase_Frequency_Per_Year": 25, "Average_Transaction_Value_$": 79.31, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1068, "Gender": "Female", "Age": 29, "Annual_Income_k$": 91.3, "Spending_Score": 82, "Purchase_Frequency_Per_Year": 45, "Average_Transaction_Value_$": 198.94, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1225, "Gender": "Male", "Age": 58, "Annual_Income_k$": 68.0, "Spending_Score": 65, "Purchase_Frequency_Per_Year": 20, "Average_Transaction_Value_$": 82.22, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1195, "Gender": "Female", "Age": 34, "Annual_Income_k$": 29.0, "Spending_Score": 35, "Purchase_Frequency_Per_Year": 15, "Average_Transaction_Value_$": 34.98, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1016, "Gender": "Male", "Age": 23, "Annual_Income_k$": 41.5, "Spending_Score": 81, "Purchase_Frequency_Per_Year": 40, "Average_Transaction_Value_$": 74.11, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1178, "Gender": "Male", "Age": 43, "Annual_Income_k$": 24.9, "Spending_Score": 26, "Purchase_Frequency_Per_Year": 10, "Average_Transaction_Value_$": 20.76, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1025, "Gender": "Male", "Age": 23, "Annual_Income_k$": 15.0, "Spending_Score": 83, "Purchase_Frequency_Per_Year": 40, "Average_Transaction_Value_$": 59.34, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1248, "Gender": "Female", "Age": 28, "Annual_Income_k$": 38.0, "Spending_Score": 37, "Purchase_Frequency_Per_Year": 27, "Average_Transaction_Value_$": 73.45, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1020, "Gender": "Female", "Age": 19, "Annual_Income_k$": 27.5, "Spending_Score": 85, "Purchase_Frequency_Per_Year": 33, "Average_Transaction_Value_$": 65.98, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1115, "Gender": "Male", "Age": 41, "Annual_Income_k$": 108.8, "Spending_Score": 39, "Purchase_Frequency_Per_Year": 9, "Average_Transaction_Value_$": 119.25, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1069, "Gender": "Female", "Age": 35, "Annual_Income_k$": 98.9, "Spending_Score": 83, "Purchase_Frequency_Per_Year": 52, "Average_Transaction_Value_$": 166.74, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1177, "Gender": "Male", "Age": 38, "Annual_Income_k$": 37.5, "Spending_Score": 20, "Purchase_Frequency_Per_Year": 7, "Average_Transaction_Value_$": 40.48, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1046, "Gender": "Male", "Age": 22, "Annual_Income_k$": 21.8, "Spending_Score": 85, "Purchase_Frequency_Per_Year": 40, "Average_Transaction_Value_$": 60.99, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1056, "Gender": "Male", "Age": 35, "Annual_Income_k$": 96.4, "Spending_Score": 74, "Purchase_Frequency_Per_Year": 48, "Average_Transaction_Value_$": 160.18, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1011, "Gender": "Female", "Age": 23, "Annual_Income_k$": 28.6, "Spending_Score": 61, "Purchase_Frequency_Per_Year": 32, "Average_Transaction_Value_$": 71.85, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1031, "Gender": "Male", "Age": 23, "Annual_Income_k$": 30.5, "Spending_Score": 64, "Purchase_Frequency_Per_Year": 42, "Average_Transaction_Value_$": 56.24, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1121, "Gender": "Female", "Age": 33, "Annual_Income_k$": 92.3, "Spending_Score": 16, "Purchase_Frequency_Per_Year": 17, "Average_Transaction_Value_$": 126.16, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1202, "Gender": "Male", "Age": 50, "Annual_Income_k$": 62.0, "Spending_Score": 24, "Purchase_Frequency_Per_Year": 13, "Average_Transaction_Value_$": 78.56, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1034, "Gender": "Male", "Age": 21, "Annual_Income_k$": 28.4, "Spending_Score": 82, "Purchase_Frequency_Per_Year": 41, "Average_Transaction_Value_$": 57.18, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1142, "Gender": "Female", "Age": 37, "Annual_Income_k$": 85.3, "Spending_Score": 34, "Purchase_Frequency_Per_Year": 17, "Average_Transaction_Value_$": 94.41, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1220, "Gender": "Female", "Age": 46, "Annual_Income_k$": 61.5, "Spending_Score": 59, "Purchase_Frequency_Per_Year": 28, "Average_Transaction_Value_$": 117.18, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1026, "Gender": "Female", "Age": 25, "Annual_Income_k$": 37.8, "Spending_Score": 98, "Purchase_Frequency_Per_Year": 43, "Average_Transaction_Value_$": 78.07, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1112, "Gender": "Female", "Age": 46, "Annual_Income_k$": 121.1, "Spending_Score": 22, "Purchase_Frequency_Per_Year": 10, "Average_Transaction_Value_$": 118.07, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1019, "Gender": "Female", "Age": 21, "Annual_Income_k$": 34.5, "Spending_Score": 88, "Purchase_Frequency_Per_Year": 37, "Average_Transaction_Value_$": 59.18, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1197, "Gender": "Male", "Age": 45, "Annual_Income_k$": 29.7, "Spending_Score": 23, "Purchase_Frequency_Per_Year": 4, "Average_Transaction_Value_$": 62.98, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1181, "Gender": "Female", "Age": 47, "Annual_Income_k$": 19.9, "Spending_Score": 44, "Purchase_Frequency_Per_Year": 7, "Average_Transaction_Value_$": 52.86, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1160, "Gender": "Female", "Age": 52, "Annual_Income_k$": 22.6, "Spending_Score": 29, "Purchase_Frequency_Per_Year": 15, "Average_Transaction_Value_$": 49.48, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1119, "Gender": "Male", "Age": 47, "Annual_Income_k$": 65.8, "Spending_Score": 25, "Purchase_Frequency_Per_Year": 2, "Average_Transaction_Value_$": 112.73, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1097, "Gender": "Male", "Age": 43, "Annual_Income_k$": 77.6, "Spending_Score": 68, "Purchase_Frequency_Per_Year": 47, "Average_Transaction_Value_$": 154.07, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1109, "Gender": "Male", "Age": 46, "Annual_Income_k$": 97.5, "Spending_Score": 10, "Purchase_Frequency_Per_Year": 13, "Average_Transaction_Value_$": 78.36, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1186, "Gender": "Female", "Age": 56, "Annual_Income_k$": 29.4, "Spending_Score": 39, "Purchase_Frequency_Per_Year": 7, "Average_Transaction_Value_$": 33.42, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1223, "Gender": "Male", "Age": 42, "Annual_Income_k$": 58.8, "Spending_Score": 56, "Purchase_Frequency_Per_Year": 25, "Average_Transaction_Value_$": 94.51, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1017, "Gender": "Female", "Age": 21, "Annual_Income_k$": 31.5, "Spending_Score": 78, "Purchase_Frequency_Per_Year": 43, "Average_Transaction_Value_$": 55.73, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1147, "Gender": "Male", "Age": 51, "Annual_Income_k$": 88.2, "Spending_Score": 3, "Purchase_Frequency_Per_Year": 13, "Average_Transaction_Value_$": 123.74, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1070, "Gender": "Male", "Age": 39, "Annual_Income_k$": 93.4, "Spending_Score": 76, "Purchase_Frequency_Per_Year": 44, "Average_Transaction_Value_$": 165.6, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1174, "Gender": "Male", "Age": 55, "Annual_Income_k$": 25.8, "Spending_Score": 18, "Purchase_Frequency_Per_Year": 7, "Average_Transaction_Value_$": 38.47, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1039, "Gender": "Male", "Age": 20, "Annual_Income_k$": 28.3, "Spending_Score": 85, "Purchase_Frequency_Per_Year": 33, "Average_Transaction_Value_$": 57.06, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1133, "Gender": "Male", "Age": 45, "Annual_Income_k$": 100.9, "Spending_Score": 21, "Purchase_Frequency_Per_Year": 10, "Average_Transaction_Value_$": 128.17, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1226, "Gender": "Male", "Age": 46, "Annual_Income_k$": 53.1, "Spending_Score": 40, "Purchase_Frequency_Per_Year": 23, "Average_Transaction_Value_$": 83.05, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1239, "Gender": "Male", "Age": 44, "Annual_Income_k$": 55.4, "Spending_Score": 55, "Purchase_Frequency_Per_Year": 27, "Average_Transaction_Value_$": 93.53, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1120, "Gender": "Male", "Age": 52, "Annual_Income_k$": 87.1, "Spending_Score": 24, "Purchase_Frequency_Per_Year": 16, "Average_Transaction_Value_$": 118.86, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1137, "Gender": "Female", "Age": 39, "Annual_Income_k$": 85.6, "Spending_Score": 28, "Purchase_Frequency_Per_Year": 11, "Average_Transaction_Value_$": 125.12, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1067, "Gender": "Female", "Age": 48, "Annual_Income_k$": 103.2, "Spending_Score": 84, "Purchase_Frequency_Per_Year": 55, "Average_Transaction_Value_$": 195.35, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1218, "Gender": "Male", "Age": 38, "Annual_Income_k$": 69.6, "Spending_Score": 49, "Purchase_Frequency_Per_Year": 27, "Average_Transaction_Value_$": 89.18, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1155, "Gender": "Female", "Age": 36, "Annual_Income_k$": 25.4, "Spending_Score": 35, "Purchase_Frequency_Per_Year": 10, "Average_Transaction_Value_$": 44.18, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1169, "Gender": "Female", "Age": 39, "Annual_Income_k$": 28.5, "Spending_Score": 29, "Purchase_Frequency_Per_Year": 8, "Average_Transaction_Value_$": 44.6, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1230, "Gender": "Female", "Age": 33, "Annual_Income_k$": 66.5, "Spending_Score": 53, "Purchase_Frequency_Per_Year": 18, "Average_Transaction_Value_$": 118.16, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1234, "Gender": "Male", "Age": 48, "Annual_Income_k$": 78.8, "Spending_Score": 54, "Purchase_Frequency_Per_Year": 16, "Average_Transaction_Value_$": 123.7, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1157, "Gender": "Male", "Age": 50, "Annual_Income_k$": 29.3, "Spending_Score": 17, "Purchase_Frequency_Per_Year": 5, "Average_Transaction_Value_$": 48.43, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1118, "Gender": "Male", "Age": 38, "Annual_Income_k$": 77.9, "Spending_Score": 27, "Purchase_Frequency_Per_Year": 18, "Average_Transaction_Value_$": 123.01, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1085, "Gender": "Female", "Age": 51, "Annual_Income_k$": 106.7, "Spending_Score": 76, "Purchase_Frequency_Per_Year": 55, "Average_Transaction_Value_$": 161.09, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1126, "Gender": "Male", "Age": 32, "Annual_Income_k$": 61.0, "Spending_Score": 18, "Purchase_Frequency_Per_Year": 9, "Average_Transaction_Value_$": 116.32, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1168, "Gender": "Female", "Age": 63, "Annual_Income_k$": 33.3, "Spending_Score": 27, "Purchase_Frequency_Per_Year": 10, "Average_Transaction_Value_$": 63.01, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1246, "Gender": "Female", "Age": 50, "Annual_Income_k$": 57.2, "Spending_Score": 50, "Purchase_Frequency_Per_Year": 26, "Average_Transaction_Value_$": 66.64, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1110, "Gender": "Female", "Age": 39, "Annual_Income_k$": 86.1, "Spending_Score": 32, "Purchase_Frequency_Per_Year": 11, "Average_Transaction_Value_$": 153.93, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1173, "Gender": "Female", "Age": 51, "Annual_Income_k$": 41.8, "Spending_Score": 13, "Purchase_Frequency_Per_Year": 9, "Average_Transaction_Value_$": 53.41, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1235, "Gender": "Male", "Age": 38, "Annual_Income_k$": 61.8, "Spending_Score": 48, "Purchase_Frequency_Per_Year": 19, "Average_Transaction_Value_$": 72.94, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1074, "Gender": "Male", "Age": 38, "Annual_Income_k$": 120.1, "Spending_Score": 90, "Purchase_Frequency_Per_Year": 51, "Average_Transaction_Value_$": 214.17, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1159, "Gender": "Female", "Age": 36, "Annual_Income_k$": 35.5, "Spending_Score": 20, "Purchase_Frequency_Per_Year": 11, "Average_Transaction_Value_$": 50.7, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1116, "Gender": "Female", "Age": 52, "Annual_Income_k$": 86.3, "Spending_Score": 23, "Purchase_Frequency_Per_Year": 12, "Average_Transaction_Value_$": 142.07, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1076, "Gender": "Male", "Age": 41, "Annual_Income_k$": 80.4, "Spending_Score": 76, "Purchase_Frequency_Per_Year": 54, "Average_Transaction_Value_$": 173.77, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1238, "Gender": "Female", "Age": 29, "Annual_Income_k$": 60.4, "Spending_Score": 39, "Purchase_Frequency_Per_Year": 23, "Average_Transaction_Value_$": 76.7, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1083, "Gender": "Female", "Age": 48, "Annual_Income_k$": 95.9, "Spending_Score": 65, "Purchase_Frequency_Per_Year": 42, "Average_Transaction_Value_$": 139.84, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1030, "Gender": "Male", "Age": 24, "Annual_Income_k$": 18.1, "Spending_Score": 73, "Purchase_Frequency_Per_Year": 54, "Average_Transaction_Value_$": 73.16, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1127, "Gender": "Female", "Age": 33, "Annual_Income_k$": 95.3, "Spending_Score": 15, "Purchase_Frequency_Per_Year": 8, "Average_Transaction_Value_$": 120.37, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1080, "Gender": "Male", "Age": 36, "Annual_Income_k$": 102.5, "Spending_Score": 76, "Purchase_Frequency_Per_Year": 32, "Average_Transaction_Value_$": 207.99, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1087, "Gender": "Female", "Age": 37, "Annual_Income_k$": 85.1, "Spending_Score": 85, "Purchase_Frequency_Per_Year": 55, "Average_Transaction_Value_$": 163.84, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1006, "Gender": "Male", "Age": 24, "Annual_Income_k$": 38.5, "Spending_Score": 82, "Purchase_Frequency_Per_Year": 34, "Average_Transaction_Value_$": 53.75, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1057, "Gender": "Female", "Age": 46, "Annual_Income_k$": 110.3, "Spending_Score": 82, "Purchase_Frequency_Per_Year": 37, "Average_Transaction_Value_$": 177.32, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1187, "Gender": "Male", "Age": 53, "Annual_Income_k$": 37.3, "Spending_Score": 29, "Purchase_Frequency_Per_Year": 6, "Average_Transaction_Value_$": 60.03, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1232, "Gender": "Female", "Age": 27, "Annual_Income_k$": 54.5, "Spending_Score": 54, "Purchase_Frequency_Per_Year": 31, "Average_Transaction_Value_$": 64.45, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1171, "Gender": "Female", "Age": 52, "Annual_Income_k$": 24.9, "Spending_Score": 23, "Purchase_Frequency_Per_Year": 12, "Average_Transaction_Value_$": 46.28, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1066, "Gender": "Female", "Age": 31, "Annual_Income_k$": 95.3, "Spending_Score": 79, "Purchase_Frequency_Per_Year": 39, "Average_Transaction_Value_$": 174.48, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1141, "Gender": "Male", "Age": 53, "Annual_Income_k$": 93.0, "Spending_Score": 20, "Purchase_Frequency_Per_Year": 11, "Average_Transaction_Value_$": 83.18, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1125, "Gender": "Female", "Age": 40, "Annual_Income_k$": 103.6, "Spending_Score": 33, "Purchase_Frequency_Per_Year": 6, "Average_Transaction_Value_$": 123.42, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1214, "Gender": "Male", "Age": 36, "Annual_Income_k$": 40.6, "Spending_Score": 54, "Purchase_Frequency_Per_Year": 16, "Average_Transaction_Value_$": 98.42, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1149, "Gender": "Female", "Age": 49, "Annual_Income_k$": 85.8, "Spending_Score": 20, "Purchase_Frequency_Per_Year": 16, "Average_Transaction_Value_$": 107.77, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1032, "Gender": "Male", "Age": 32, "Annual_Income_k$": 34.5, "Spending_Score": 79, "Purchase_Frequency_Per_Year": 33, "Average_Transaction_Value_$": 67.6, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1013, "Gender": "Male", "Age": 26, "Annual_Income_k$": 24.3, "Spending_Score": 79, "Purchase_Frequency_Per_Year": 45, "Average_Transaction_Value_$": 76.45, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1036, "Gender": "Male", "Age": 20, "Annual_Income_k$": 28.5, "Spending_Score": 92, "Purchase_Frequency_Per_Year": 42, "Average_Transaction_Value_$": 72.61, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1029, "Gender": "Male", "Age": 23, "Annual_Income_k$": 32.6, "Spending_Score": 79, "Purchase_Frequency_Per_Year": 36, "Average_Transaction_Value_$": 56.42, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1043, "Gender": "Female", "Age": 25, "Annual_Income_k$": 27.1, "Spending_Score": 64, "Purchase_Frequency_Per_Year": 39, "Average_Transaction_Value_$": 71.06, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1219, "Gender": "Male", "Age": 39, "Annual_Income_k$": 53.3, "Spending_Score": 52, "Purchase_Frequency_Per_Year": 27, "Average_Transaction_Value_$": 72.47, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1023, "Gender": "Male", "Age": 25, "Annual_Income_k$": 31.7, "Spending_Score": 91, "Purchase_Frequency_Per_Year": 38, "Average_Transaction_Value_$": 73.24, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1094, "Gender": "Female", "Age": 43, "Annual_Income_k$": 88.9, "Spending_Score": 97, "Purchase_Frequency_Per_Year": 43, "Average_Transaction_Value_$": 158.47, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1213, "Gender": "Male", "Age": 61, "Annual_Income_k$": 69.5, "Spending_Score": 58, "Purchase_Frequency_Per_Year": 17, "Average_Transaction_Value_$": 74.22, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1102, "Gender": "Female", "Age": 61, "Annual_Income_k$": 89.8, "Spending_Score": 16, "Purchase_Frequency_Per_Year": 17, "Average_Transaction_Value_$": 140.98, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1052, "Gender": "Female", "Age": 44, "Annual_Income_k$": 88.3, "Spending_Score": 94, "Purchase_Frequency_Per_Year": 40, "Average_Transaction_Value_$": 203.88, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1096, "Gender": "Female", "Age": 34, "Annual_Income_k$": 97.8, "Spending_Score": 78, "Purchase_Frequency_Per_Year": 49, "Average_Transaction_Value_$": 193.47, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1144, "Gender": "Female", "Age": 58, "Annual_Income_k$": 96.7, "Spending_Score": 11, "Purchase_Frequency_Per_Year": 14, "Average_Transaction_Value_$": 120.52, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1200, "Gender": "Female", "Age": 45, "Annual_Income_k$": 24.8, "Spending_Score": 17, "Purchase_Frequency_Per_Year": 10, "Average_Transaction_Value_$": 50.73, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1077, "Gender": "Male", "Age": 39, "Annual_Income_k$": 108.9, "Spending_Score": 89, "Purchase_Frequency_Per_Year": 37, "Average_Transaction_Value_$": 194.41, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1042, "Gender": "Female", "Age": 26, "Annual_Income_k$": 38.8, "Spending_Score": 90, "Purchase_Frequency_Per_Year": 43, "Average_Transaction_Value_$": 63.62, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1114, "Gender": "Female", "Age": 39, "Annual_Income_k$": 87.4, "Spending_Score": 14, "Purchase_Frequency_Per_Year": 10, "Average_Transaction_Value_$": 127.98, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1153, "Gender": "Female", "Age": 35, "Annual_Income_k$": 28.6, "Spending_Score": 19, "Purchase_Frequency_Per_Year": 9, "Average_Transaction_Value_$": 32.48, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1079, "Gender": "Male", "Age": 38, "Annual_Income_k$": 102.5, "Spending_Score": 99, "Purchase_Frequency_Per_Year": 51, "Average_Transaction_Value_$": 256.97, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1148, "Gender": "Female", "Age": 44, "Annual_Income_k$": 78.3, "Spending_Score": 22, "Purchase_Frequency_Per_Year": 7, "Average_Transaction_Value_$": 104.89, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1027, "Gender": "Female", "Age": 20, "Annual_Income_k$": 32.6, "Spending_Score": 69, "Purchase_Frequency_Per_Year": 38, "Average_Transaction_Value_$": 65.77, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1242, "Gender": "Male", "Age": 38, "Annual_Income_k$": 57.6, "Spending_Score": 62, "Purchase_Frequency_Per_Year": 17, "Average_Transaction_Value_$": 81.95, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1165, "Gender": "Male", "Age": 56, "Annual_Income_k$": 34.2, "Spending_Score": 19, "Purchase_Frequency_Per_Year": 9, "Average_Transaction_Value_$": 44.1, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1244, "Gender": "Male", "Age": 42, "Annual_Income_k$": 58.5, "Spending_Score": 51, "Purchase_Frequency_Per_Year": 26, "Average_Transaction_Value_$": 69.78, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1138, "Gender": "Female", "Age": 43, "Annual_Income_k$": 80.1, "Spending_Score": 23, "Purchase_Frequency_Per_Year": 11, "Average_Transaction_Value_$": 139.65, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1001, "Gender": "Male", "Age": 27, "Annual_Income_k$": 34.3, "Spending_Score": 65, "Purchase_Frequency_Per_Year": 40, "Average_Transaction_Value_$": 69.29, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1003, "Gender": "Male", "Age": 28, "Annual_Income_k$": 27.3, "Spending_Score": 75, "Purchase_Frequency_Per_Year": 34, "Average_Transaction_Value_$": 78.0, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1078, "Gender": "Female", "Age": 34, "Annual_Income_k$": 104.5, "Spending_Score": 83, "Purchase_Frequency_Per_Year": 49, "Average_Transaction_Value_$": 187.78, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1047, "Gender": "Male", "Age": 23, "Annual_Income_k$": 34.1, "Spending_Score": 67, "Purchase_Frequency_Per_Year": 33, "Average_Transaction_Value_$": 59.3, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1101, "Gender": "Female", "Age": 53, "Annual_Income_k$": 93.2, "Spending_Score": 27, "Purchase_Frequency_Per_Year": 19, "Average_Transaction_Value_$": 109.55, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1128, "Gender": "Female", "Age": 46, "Annual_Income_k$": 102.8, "Spending_Score": 21, "Purchase_Frequency_Per_Year": 19, "Average_Transaction_Value_$": 126.95, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1151, "Gender": "Female", "Age": 36, "Annual_Income_k$": 33.6, "Spending_Score": 19, "Purchase_Frequency_Per_Year": 10, "Average_Transaction_Value_$": 42.59, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1249, "Gender": "Male", "Age": 55, "Annual_Income_k$": 67.2, "Spending_Score": 64, "Purchase_Frequency_Per_Year": 25, "Average_Transaction_Value_$": 88.51, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1091, "Gender": "Male", "Age": 37, "Annual_Income_k$": 85.1, "Spending_Score": 75, "Purchase_Frequency_Per_Year": 47, "Average_Transaction_Value_$": 179.8, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1086, "Gender": "Female", "Age": 26, "Annual_Income_k$": 93.2, "Spending_Score": 83, "Purchase_Frequency_Per_Year": 45, "Average_Transaction_Value_$": 144.44, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1176, "Gender": "Male", "Age": 29, "Annual_Income_k$": 36.7, "Spending_Score": 38, "Purchase_Frequency_Per_Year": 4, "Average_Transaction_Value_$": 26.1, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1196, "Gender": "Male", "Age": 56, "Annual_Income_k$": 31.0, "Spending_Score": 29, "Purchase_Frequency_Per_Year": 6, "Average_Transaction_Value_$": 42.19, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1099, "Gender": "Male", "Age": 43, "Annual_Income_k$": 86.4, "Spending_Score": 81, "Purchase_Frequency_Per_Year": 40, "Average_Transaction_Value_$": 158.11, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1037, "Gender": "Female", "Age": 26, "Annual_Income_k$": 38.4, "Spending_Score": 71, "Purchase_Frequency_Per_Year": 41, "Average_Transaction_Value_$": 40.7, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1062, "Gender": "Male", "Age": 38, "Annual_Income_k$": 108.2, "Spending_Score": 94, "Purchase_Frequency_Per_Year": 36, "Average_Transaction_Value_$": 180.88, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1163, "Gender": "Male", "Age": 70, "Annual_Income_k$": 36.7, "Spending_Score": 36, "Purchase_Frequency_Per_Year": 10, "Average_Transaction_Value_$": 46.97, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1140, "Gender": "Female", "Age": 41, "Annual_Income_k$": 80.0, "Spending_Score": 13, "Purchase_Frequency_Per_Year": 14, "Average_Transaction_Value_$": 140.29, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1012, "Gender": "Female", "Age": 23, "Annual_Income_k$": 30.7, "Spending_Score": 78, "Purchase_Frequency_Per_Year": 43, "Average_Transaction_Value_$": 78.63, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1245, "Gender": "Male", "Age": 40, "Annual_Income_k$": 65.3, "Spending_Score": 48, "Purchase_Frequency_Per_Year": 16, "Average_Transaction_Value_$": 75.26, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1199, "Gender": "Female", "Age": 45, "Annual_Income_k$": 24.2, "Spending_Score": 34, "Purchase_Frequency_Per_Year": 9, "Average_Transaction_Value_$": 39.29, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1028, "Gender": "Female", "Age": 27, "Annual_Income_k$": 29.9, "Spending_Score": 73, "Purchase_Frequency_Per_Year": 47, "Average_Transaction_Value_$": 52.07, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1156, "Gender": "Female", "Age": 70, "Annual_Income_k$": 26.1, "Spending_Score": 19, "Purchase_Frequency_Per_Year": 9, "Average_Transaction_Value_$": 56.17, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1005, "Gender": "Female", "Age": 24, "Annual_Income_k$": 39.2, "Spending_Score": 77, "Purchase_Frequency_Per_Year": 40, "Average_Transaction_Value_$": 48.47, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1123, "Gender": "Male", "Age": 41, "Annual_Income_k$": 96.6, "Spending_Score": 35, "Purchase_Frequency_Per_Year": 11, "Average_Transaction_Value_$": 93.04, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1033, "Gender": "Male", "Age": 25, "Annual_Income_k$": 42.3, "Spending_Score": 68, "Purchase_Frequency_Per_Year": 32, "Average_Transaction_Value_$": 65.55, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1145, "Gender": "Male", "Age": 26, "Annual_Income_k$": 106.5, "Spending_Score": 20, "Purchase_Frequency_Per_Year": 14, "Average_Transaction_Value_$": 130.35, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1179, "Gender": "Female", "Age": 44, "Annual_Income_k$": 25.5, "Spending_Score": 24, "Purchase_Frequency_Per_Year": 14, "Average_Transaction_Value_$": 29.16, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1139, "Gender": "Male", "Age": 54, "Annual_Income_k$": 103.6, "Spending_Score": 13, "Purchase_Frequency_Per_Year": 15, "Average_Transaction_Value_$": 153.31, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1063, "Gender": "Male", "Age": 19, "Annual_Income_k$": 104.9, "Spending_Score": 81, "Purchase_Frequency_Per_Year": 33, "Average_Transaction_Value_$": 162.51, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1136, "Gender": "Female", "Age": 46, "Annual_Income_k$": 95.5, "Spending_Score": 10, "Purchase_Frequency_Per_Year": 15, "Average_Transaction_Value_$": 129.45, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1129, "Gender": "Female", "Age": 48, "Annual_Income_k$": 71.3, "Spending_Score": 22, "Purchase_Frequency_Per_Year": 16, "Average_Transaction_Value_$": 109.2, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1227, "Gender": "Female", "Age": 42, "Annual_Income_k$": 42.4, "Spending_Score": 53, "Purchase_Frequency_Per_Year": 16, "Average_Transaction_Value_$": 85.66, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1206, "Gender": "Male", "Age": 46, "Annual_Income_k$": 51.3, "Spending_Score": 41, "Purchase_Frequency_Per_Year": 29, "Average_Transaction_Value_$": 85.61, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1071, "Gender": "Female", "Age": 47, "Annual_Income_k$": 96.2, "Spending_Score": 82, "Purchase_Frequency_Per_Year": 58, "Average_Transaction_Value_$": 173.12, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1193, "Gender": "Female", "Age": 48, "Annual_Income_k$": 21.3, "Spending_Score": 33, "Purchase_Frequency_Per_Year": 11, "Average_Transaction_Value_$": 42.53, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1065, "Gender": "Male", "Age": 36, "Annual_Income_k$": 110.7, "Spending_Score": 88, "Purchase_Frequency_Per_Year": 46, "Average_Transaction_Value_$": 177.19, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1045, "Gender": "Female", "Age": 19, "Annual_Income_k$": 29.3, "Spending_Score": 80, "Purchase_Frequency_Per_Year": 39, "Average_Transaction_Value_$": 50.6, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1166, "Gender": "Female", "Age": 38, "Annual_Income_k$": 19.1, "Spending_Score": 21, "Purchase_Frequency_Per_Year": 10, "Average_Transaction_Value_$": 59.4, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1041, "Gender": "Female", "Age": 28, "Annual_Income_k$": 32.7, "Spending_Score": 80, "Purchase_Frequency_Per_Year": 35, "Average_Transaction_Value_$": 55.49, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1124, "Gender": "Female", "Age": 51, "Annual_Income_k$": 88.9, "Spending_Score": 31, "Purchase_Frequency_Per_Year": 11, "Average_Transaction_Value_$": 134.87, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1154, "Gender": "Female", "Age": 56, "Annual_Income_k$": 25.2, "Spending_Score": 34, "Purchase_Frequency_Per_Year": 13, "Average_Transaction_Value_$": 59.44, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1024, "Gender": "Male", "Age": 19, "Annual_Income_k$": 43.0, "Spending_Score": 65, "Purchase_Frequency_Per_Year": 40, "Average_Transaction_Value_$": 45.65, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1212, "Gender": "Female", "Age": 44, "Annual_Income_k$": 29.5, "Spending_Score": 52, "Purchase_Frequency_Per_Year": 35, "Average_Transaction_Value_$": 74.61, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1184, "Gender": "Male", "Age": 51, "Annual_Income_k$": 23.4, "Spending_Score": 32, "Purchase_Frequency_Per_Year": 2, "Average_Transaction_Value_$": 44.52, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1082, "Gender": "Female", "Age": 42, "Annual_Income_k$": 84.2, "Spending_Score": 77, "Purchase_Frequency_Per_Year": 30, "Average_Transaction_Value_$": 156.11, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1040, "Gender": "Male", "Age": 26, "Annual_Income_k$": 35.6, "Spending_Score": 67, "Purchase_Frequency_Per_Year": 29, "Average_Transaction_Value_$": 75.23, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1210, "Gender": "Female", "Age": 37, "Annual_Income_k$": 54.3, "Spending_Score": 67, "Purchase_Frequency_Per_Year": 22, "Average_Transaction_Value_$": 111.24, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1048, "Gender": "Female", "Age": 29, "Annual_Income_k$": 33.8, "Spending_Score": 66, "Purchase_Frequency_Per_Year": 39, "Average_Transaction_Value_$": 57.16, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1095, "Gender": "Female", "Age": 40, "Annual_Income_k$": 89.3, "Spending_Score": 91, "Purchase_Frequency_Per_Year": 35, "Average_Transaction_Value_$": 218.08, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1191, "Gender": "Male", "Age": 49, "Annual_Income_k$": 27.7, "Spending_Score": 31, "Purchase_Frequency_Per_Year": 5, "Average_Transaction_Value_$": 47.08, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1162, "Gender": "Male", "Age": 46, "Annual_Income_k$": 25.4, "Spending_Score": 12, "Purchase_Frequency_Per_Year": 10, "Average_Transaction_Value_$": 58.29, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1044, "Gender": "Female", "Age": 24, "Annual_Income_k$": 29.7, "Spending_Score": 80, "Purchase_Frequency_Per_Year": 31, "Average_Transaction_Value_$": 75.39, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1146, "Gender": "Male", "Age": 40, "Annual_Income_k$": 84.9, "Spending_Score": 20, "Purchase_Frequency_Per_Year": 11, "Average_Transaction_Value_$": 105.49, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1183, "Gender": "Female", "Age": 49, "Annual_Income_k$": 22.0, "Spending_Score": 20, "Purchase_Frequency_Per_Year": 5, "Average_Transaction_Value_$": 35.33, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1004, "Gender": "Female", "Age": 31, "Annual_Income_k$": 36.3, "Spending_Score": 71, "Purchase_Frequency_Per_Year": 39, "Average_Transaction_Value_$": 77.65, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1106, "Gender": "Male", "Age": 42, "Annual_Income_k$": 86.2, "Spending_Score": 35, "Purchase_Frequency_Per_Year": 12, "Average_Transaction_Value_$": 132.12, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1054, "Gender": "Female", "Age": 44, "Annual_Income_k$": 102.3, "Spending_Score": 81, "Purchase_Frequency_Per_Year": 44, "Average_Transaction_Value_$": 192.6, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1134, "Gender": "Female", "Age": 36, "Annual_Income_k$": 123.8, "Spending_Score": 19, "Purchase_Frequency_Per_Year": 14, "Average_Transaction_Value_$": 85.95, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1228, "Gender": "Female", "Age": 43, "Annual_Income_k$": 53.7, "Spending_Score": 43, "Purchase_Frequency_Per_Year": 24, "Average_Transaction_Value_$": 82.79, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1194, "Gender": "Female", "Age": 32, "Annual_Income_k$": 30.3, "Spending_Score": 33, "Purchase_Frequency_Per_Year": 9, "Average_Transaction_Value_$": 38.18, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1233, "Gender": "Female", "Age": 46, "Annual_Income_k$": 54.8, "Spending_Score": 65, "Purchase_Frequency_Per_Year": 29, "Average_Transaction_Value_$": 83.68, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1050, "Gender": "Female", "Age": 18, "Annual_Income_k$": 30.4, "Spending_Score": 81, "Purchase_Frequency_Per_Year": 31, "Average_Transaction_Value_$": 69.86, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1164, "Gender": "Male", "Age": 44, "Annual_Income_k$": 29.2, "Spending_Score": 38, "Purchase_Frequency_Per_Year": 14, "Average_Transaction_Value_$": 52.09, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1081, "Gender": "Female", "Age": 39, "Annual_Income_k$": 94.9, "Spending_Score": 75, "Purchase_Frequency_Per_Year": 36, "Average_Transaction_Value_$": 176.8, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1035, "Gender": "Female", "Age": 28, "Annual_Income_k$": 26.3, "Spending_Score": 70, "Purchase_Frequency_Per_Year": 37, "Average_Transaction_Value_$": 90.73, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1207, "Gender": "Female", "Age": 50, "Annual_Income_k$": 57.7, "Spending_Score": 56, "Purchase_Frequency_Per_Year": 21, "Average_Transaction_Value_$": 74.47, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1008, "Gender": "Male", "Age": 28, "Annual_Income_k$": 29.8, "Spending_Score": 80, "Purchase_Frequency_Per_Year": 41, "Average_Transaction_Value_$": 71.17, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1172, "Gender": "Male", "Age": 39, "Annual_Income_k$": 36.5, "Spending_Score": 18, "Purchase_Frequency_Per_Year": 6, "Average_Transaction_Value_$": 38.19, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1111, "Gender": "Female", "Age": 48, "Annual_Income_k$": 96.1, "Spending_Score": 27, "Purchase_Frequency_Per_Year": 10, "Average_Transaction_Value_$": 124.22, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1092, "Gender": "Female", "Age": 35, "Annual_Income_k$": 97.9, "Spending_Score": 86, "Purchase_Frequency_Per_Year": 44, "Average_Transaction_Value_$": 217.0, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1084, "Gender": "Female", "Age": 31, "Annual_Income_k$": 86.9, "Spending_Score": 78, "Purchase_Frequency_Per_Year": 49, "Average_Transaction_Value_$": 185.09, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1224, "Gender": "Male", "Age": 61, "Annual_Income_k$": 45.2, "Spending_Score": 40, "Purchase_Frequency_Per_Year": 24, "Average_Transaction_Value_$": 91.21, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1229, "Gender": "Male", "Age": 48, "Annual_Income_k$": 73.0, "Spending_Score": 49, "Purchase_Frequency_Per_Year": 19, "Average_Transaction_Value_$": 99.46, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1090, "Gender": "Male", "Age": 34, "Annual_Income_k$": 88.2, "Spending_Score": 77, "Purchase_Frequency_Per_Year": 44, "Average_Transaction_Value_$": 202.04, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1009, "Gender": "Male", "Age": 23, "Annual_Income_k$": 34.3, "Spending_Score": 80, "Purchase_Frequency_Per_Year": 31, "Average_Transaction_Value_$": 71.18, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1014, "Gender": "Male", "Age": 18, "Annual_Income_k$": 23.6, "Spending_Score": 99, "Purchase_Frequency_Per_Year": 33, "Average_Transaction_Value_$": 72.82, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1060, "Gender": "Male", "Age": 43, "Annual_Income_k$": 92.6, "Spending_Score": 75, "Purchase_Frequency_Per_Year": 48, "Average_Transaction_Value_$": 150.05, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1216, "Gender": "Male", "Age": 44, "Annual_Income_k$": 46.8, "Spending_Score": 53, "Purchase_Frequency_Per_Year": 36, "Average_Transaction_Value_$": 103.72, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1132, "Gender": "Male", "Age": 33, "Annual_Income_k$": 86.2, "Spending_Score": 33, "Purchase_Frequency_Per_Year": 7, "Average_Transaction_Value_$": 100.43, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1018, "Gender": "Male", "Age": 26, "Annual_Income_k$": 39.0, "Spending_Score": 67, "Purchase_Frequency_Per_Year": 49, "Average_Transaction_Value_$": 62.16, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1167, "Gender": "Male", "Age": 45, "Annual_Income_k$": 29.6, "Spending_Score": 26, "Purchase_Frequency_Per_Year": 11, "Average_Transaction_Value_$": 38.24, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1073, "Gender": "Male", "Age": 45, "Annual_Income_k$": 85.2, "Spending_Score": 94, "Purchase_Frequency_Per_Year": 42, "Average_Transaction_Value_$": 142.12, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1221, "Gender": "Male", "Age": 47, "Annual_Income_k$": 57.5, "Spending_Score": 60, "Purchase_Frequency_Per_Year": 28, "Average_Transaction_Value_$": 67.19, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1135, "Gender": "Female", "Age": 41, "Annual_Income_k$": 94.5, "Spending_Score": 15, "Purchase_Frequency_Per_Year": 7, "Average_Transaction_Value_$": 140.58, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1205, "Gender": "Female", "Age": 48, "Annual_Income_k$": 52.5, "Spending_Score": 60, "Purchase_Frequency_Per_Year": 32, "Average_Transaction_Value_$": 85.73, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1231, "Gender": "Female", "Age": 40, "Annual_Income_k$": 54.5, "Spending_Score": 53, "Purchase_Frequency_Per_Year": 25, "Average_Transaction_Value_$": 76.64, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1064, "Gender": "Male", "Age": 32, "Annual_Income_k$": 104.8, "Spending_Score": 85, "Purchase_Frequency_Per_Year": 53, "Average_Transaction_Value_$": 185.35, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1055, "Gender": "Male", "Age": 29, "Annual_Income_k$": 94.7, "Spending_Score": 82, "Purchase_Frequency_Per_Year": 41, "Average_Transaction_Value_$": 166.74, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1108, "Gender": "Male", "Age": 39, "Annual_Income_k$": 85.9, "Spending_Score": 13, "Purchase_Frequency_Per_Year": 12, "Average_Transaction_Value_$": 155.1, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1051, "Gender": "Male", "Age": 30, "Annual_Income_k$": 85.1, "Spending_Score": 84, "Purchase_Frequency_Per_Year": 33, "Average_Transaction_Value_$": 178.43, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1240, "Gender": "Male", "Age": 51, "Annual_Income_k$": 56.0, "Spending_Score": 56, "Purchase_Frequency_Per_Year": 19, "Average_Transaction_Value_$": 109.43, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1175, "Gender": "Male", "Age": 51, "Annual_Income_k$": 25.3, "Spending_Score": 24, "Purchase_Frequency_Per_Year": 13, "Average_Transaction_Value_$": 40.54, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1209, "Gender": "Male", "Age": 51, "Annual_Income_k$": 63.4, "Spending_Score": 44, "Purchase_Frequency_Per_Year": 29, "Average_Transaction_Value_$": 63.96, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1190, "Gender": "Female", "Age": 28, "Annual_Income_k$": 26.7, "Spending_Score": 33, "Purchase_Frequency_Per_Year": 7, "Average_Transaction_Value_$": 45.27, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1247, "Gender": "Male", "Age": 48, "Annual_Income_k$": 58.8, "Spending_Score": 40, "Purchase_Frequency_Per_Year": 24, "Average_Transaction_Value_$": 85.51, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1208, "Gender": "Male", "Age": 48, "Annual_Income_k$": 69.7, "Spending_Score": 41, "Purchase_Frequency_Per_Year": 35, "Average_Transaction_Value_$": 75.06, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1222, "Gender": "Male", "Age": 37, "Annual_Income_k$": 62.8, "Spending_Score": 61, "Purchase_Frequency_Per_Year": 25, "Average_Transaction_Value_$": 89.65, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1170, "Gender": "Male", "Age": 63, "Annual_Income_k$": 34.4, "Spending_Score": 40, "Purchase_Frequency_Per_Year": 10, "Average_Transaction_Value_$": 30.69, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1059, "Gender": "Female", "Age": 41, "Annual_Income_k$": 101.6, "Spending_Score": 85, "Purchase_Frequency_Per_Year": 45, "Average_Transaction_Value_$": 166.16, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1049, "Gender": "Female", "Age": 26, "Annual_Income_k$": 32.0, "Spending_Score": 83, "Purchase_Frequency_Per_Year": 38, "Average_Transaction_Value_$": 86.19, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1089, "Gender": "Male", "Age": 40, "Annual_Income_k$": 100.0, "Spending_Score": 90, "Purchase_Frequency_Per_Year": 32, "Average_Transaction_Value_$": 222.18, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1022, "Gender": "Female", "Age": 24, "Annual_Income_k$": 42.8, "Spending_Score": 70, "Purchase_Frequency_Per_Year": 33, "Average_Transaction_Value_$": 42.59, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1058, "Gender": "Male", "Age": 34, "Annual_Income_k$": 87.9, "Spending_Score": 80, "Purchase_Frequency_Per_Year": 43, "Average_Transaction_Value_$": 154.12, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1204, "Gender": "Female", "Age": 36, "Annual_Income_k$": 60.6, "Spending_Score": 49, "Purchase_Frequency_Per_Year": 17, "Average_Transaction_Value_$": 93.15, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1161, "Gender": "Female", "Age": 39, "Annual_Income_k$": 26.9, "Spending_Score": 26, "Purchase_Frequency_Per_Year": 8, "Average_Transaction_Value_$": 51.43, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1243, "Gender": "Male", "Age": 52, "Annual_Income_k$": 65.3, "Spending_Score": 49, "Purchase_Frequency_Per_Year": 21, "Average_Transaction_Value_$": 76.27, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1188, "Gender": "Female", "Age": 50, "Annual_Income_k$": 22.0, "Spending_Score": 21, "Purchase_Frequency_Per_Year": 11, "Average_Transaction_Value_$": 53.77, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1192, "Gender": "Male", "Age": 47, "Annual_Income_k$": 32.0, "Spending_Score": 28, "Purchase_Frequency_Per_Year": 12, "Average_Transaction_Value_$": 24.58, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1130, "Gender": "Female", "Age": 39, "Annual_Income_k$": 108.0, "Spending_Score": 30, "Purchase_Frequency_Per_Year": 17, "Average_Transaction_Value_$": 104.43, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1038, "Gender": "Male", "Age": 18, "Annual_Income_k$": 34.3, "Spending_Score": 75, "Purchase_Frequency_Per_Year": 38, "Average_Transaction_Value_$": 67.24, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1158, "Gender": "Female", "Age": 47, "Annual_Income_k$": 25.1, "Spending_Score": 28, "Purchase_Frequency_Per_Year": 11, "Average_Transaction_Value_$": 49.57, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1236, "Gender": "Female", "Age": 56, "Annual_Income_k$": 62.3, "Spending_Score": 59, "Purchase_Frequency_Per_Year": 29, "Average_Transaction_Value_$": 109.59, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1002, "Gender": "Male", "Age": 24, "Annual_Income_k$": 29.3, "Spending_Score": 74, "Purchase_Frequency_Per_Year": 40, "Average_Transaction_Value_$": 71.73, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1053, "Gender": "Male", "Age": 51, "Annual_Income_k$": 104.0, "Spending_Score": 89, "Purchase_Frequency_Per_Year": 44, "Average_Transaction_Value_$": 155.36, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1150, "Gender": "Male", "Age": 41, "Annual_Income_k$": 97.3, "Spending_Score": 27, "Purchase_Frequency_Per_Year": 11, "Average_Transaction_Value_$": 91.87, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1131, "Gender": "Male", "Age": 51, "Annual_Income_k$": 96.7, "Spending_Score": 10, "Purchase_Frequency_Per_Year": 15, "Average_Transaction_Value_$": 123.92, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1152, "Gender": "Male", "Age": 31, "Annual_Income_k$": 24.9, "Spending_Score": 20, "Purchase_Frequency_Per_Year": 8, "Average_Transaction_Value_$": 48.52, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1104, "Gender": "Female", "Age": 51, "Annual_Income_k$": 95.6, "Spending_Score": 31, "Purchase_Frequency_Per_Year": 8, "Average_Transaction_Value_$": 91.83, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1100, "Gender": "Male", "Age": 42, "Annual_Income_k$": 92.4, "Spending_Score": 92, "Purchase_Frequency_Per_Year": 37, "Average_Transaction_Value_$": 145.43, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1117, "Gender": "Female", "Age": 50, "Annual_Income_k$": 63.5, "Spending_Score": 23, "Purchase_Frequency_Per_Year": 11, "Average_Transaction_Value_$": 122.28, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1088, "Gender": "Female", "Age": 42, "Annual_Income_k$": 91.1, "Spending_Score": 97, "Purchase_Frequency_Per_Year": 34, "Average_Transaction_Value_$": 152.96, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1203, "Gender": "Female", "Age": 43, "Annual_Income_k$": 62.9, "Spending_Score": 69, "Purchase_Frequency_Per_Year": 21, "Average_Transaction_Value_$": 86.83, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1075, "Gender": "Female", "Age": 32, "Annual_Income_k$": 82.9, "Spending_Score": 99, "Purchase_Frequency_Per_Year": 49, "Average_Transaction_Value_$": 221.12, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1215, "Gender": "Male", "Age": 58, "Annual_Income_k$": 54.4, "Spending_Score": 51, "Purchase_Frequency_Per_Year": 29, "Average_Transaction_Value_$": 80.58, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1211, "Gender": "Female", "Age": 54, "Annual_Income_k$": 65.7, "Spending_Score": 48, "Purchase_Frequency_Per_Year": 12, "Average_Transaction_Value_$": 66.34, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1122, "Gender": "Male", "Age": 50, "Annual_Income_k$": 115.5, "Spending_Score": 25, "Purchase_Frequency_Per_Year": 4, "Average_Transaction_Value_$": 85.8, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1250, "Gender": "Male", "Age": 54, "Annual_Income_k$": 61.5, "Spending_Score": 42, "Purchase_Frequency_Per_Year": 31, "Average_Transaction_Value_$": 61.66, "Cluster": 4, "Segment_Name": "Balanced Mainstream"}, {"CustomerID": 1021, "Gender": "Male", "Age": 31, "Annual_Income_k$": 34.5, "Spending_Score": 85, "Purchase_Frequency_Per_Year": 33, "Average_Transaction_Value_$": 92.78, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1189, "Gender": "Female", "Age": 44, "Annual_Income_k$": 33.9, "Spending_Score": 29, "Purchase_Frequency_Per_Year": 10, "Average_Transaction_Value_$": 42.79, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1072, "Gender": "Male", "Age": 29, "Annual_Income_k$": 102.1, "Spending_Score": 86, "Purchase_Frequency_Per_Year": 56, "Average_Transaction_Value_$": 122.45, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1107, "Gender": "Female", "Age": 41, "Annual_Income_k$": 85.2, "Spending_Score": 17, "Purchase_Frequency_Per_Year": 12, "Average_Transaction_Value_$": 94.39, "Cluster": 1, "Segment_Name": "Conservative High Earners"}, {"CustomerID": 1015, "Gender": "Female", "Age": 18, "Annual_Income_k$": 37.7, "Spending_Score": 76, "Purchase_Frequency_Per_Year": 44, "Average_Transaction_Value_$": 61.22, "Cluster": 0, "Segment_Name": "Young Trendsetters"}, {"CustomerID": 1093, "Gender": "Female", "Age": 34, "Annual_Income_k$": 97.9, "Spending_Score": 71, "Purchase_Frequency_Per_Year": 30, "Average_Transaction_Value_$": 181.93, "Cluster": 2, "Segment_Name": "Elite Loyal Shoppers"}, {"CustomerID": 1180, "Gender": "Female", "Age": 51, "Annual_Income_k$": 26.3, "Spending_Score": 34, "Purchase_Frequency_Per_Year": 9, "Average_Transaction_Value_$": 52.6, "Cluster": 3, "Segment_Name": "Budget Conscious / At-Risk"}, {"CustomerID": 1103, "Gender": "Male", "Age": 35, "Annual_Income_k$": 108.3, "Spending_Score": 28, "Purchase_Frequency_Per_Year": 11, "Average_Transaction_Value_$": 105.91, "Cluster": 1, "Segment_Name": "Conservative High Earners"}];
+        const personas = [{"Cluster_ID": 0, "Segment_Name": "Young Trendsetters", "Customer_Count": 53, "Description": "Younger demographic with moderate-to-low income but enthusiastic spending habits.", "Marketing_Strategy": "Trendy social media marketing, discounts, BNPL (Buy-Now-Pay-Later), flash sales."}, {"Cluster_ID": 1, "Segment_Name": "Conservative High Earners", "Customer_Count": 51, "Description": "High income but conservative spending and lower transaction frequency.", "Marketing_Strategy": "Premium value messaging, quality assurance campaigns, high-utility product promotions."}, {"Cluster_ID": 2, "Segment_Name": "Elite Loyal Shoppers", "Customer_Count": 50, "Description": "High income, high spending, high purchase frequency.", "Marketing_Strategy": "VIP loyalty rewards, exclusive previews, personalized concierge service."}, {"Cluster_ID": 3, "Segment_Name": "Budget Conscious / At-Risk", "Customer_Count": 50, "Description": "Low-to-moderate income, low spending score, low purchase frequency.", "Marketing_Strategy": "Budget-friendly bundles, clearance discounts, essential value packs."}, {"Cluster_ID": 4, "Segment_Name": "Balanced Mainstream", "Customer_Count": 46, "Description": "Moderate income, average spending score, steady seasonal frequency.", "Marketing_Strategy": "Targeted seasonal campaigns, loyalty point incentives, cross-category recommendations."}];
+
+        // Render Persona Cards
+        const personaContainer = document.getElementById('personaCardsContainer');
+        personas.forEach((p, index) => {
+            const card = document.createElement('div');
+            card.className = `persona-card cluster-${p.Cluster_ID}`;
+            card.innerHTML = `
+                <div class="persona-header">
+                    <div>
+                        <span class="cluster-tag">Cluster ${p.Cluster_ID}</span>
+                        <h3 class="persona-title" style="margin-top:6px;">${p.Segment_Name}</h3>
+                    </div>
+                    <span style="font-weight:700; color:#0f766e; font-size:0.95rem;">${p.Customer_Count} (${((p.Customer_Count/250)*100).toFixed(1)}%)</span>
+                </div>
+                <p class="persona-desc">${p.Description}</p>
+                <div class="strategy-box">
+                    <div class="strategy-title">Target Commercial Strategy</div>
+                    <div>${p.Marketing_Strategy}</div>
+                </div>
+            `;
+            personaContainer.appendChild(card);
+        });
+
+        // Render Customer Table
+        const tbody = document.getElementById('tableBody');
+        const searchInput = document.getElementById('searchInput');
+        const clusterFilter = document.getElementById('clusterFilter');
+        const countBadge = document.getElementById('recordCountBadge');
+
+        function renderTable(data) {
+            tbody.innerHTML = '';
+            countBadge.innerText = `${data.length} Customers`;
+            data.forEach(c => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td style="font-weight:600;">${c.CustomerID}</td>
+                    <td>${c.Gender}</td>
+                    <td>${c.Age}</td>
+                    <td>$${c["Annual_Income_k$"]}k</td>
+                    <td><span style="font-weight:600;">${c.Spending_Score}</span> / 100</td>
+                    <td>${c.Purchase_Frequency_Per_Year}</td>
+                    <td>$${c["Average_Transaction_Value_$"]}</td>
+                    <td><span class="cluster-tag" style="background:#f1f5f9; color:#1e293b;">#${c.Cluster}</span></td>
+                    <td style="font-weight:600; color:var(--primary);">${c.Segment_Name}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function filterData() {
+            const query = searchInput.value.toLowerCase();
+            const selectedCluster = clusterFilter.value;
+
+            const filtered = customers.filter(c => {
+                const matchesCluster = selectedCluster === 'ALL' || c.Cluster.toString() === selectedCluster;
+                const matchesSearch = 
+                    c.CustomerID.toString().includes(query) ||
+                    c.Segment_Name.toLowerCase().includes(query) ||
+                    c.Gender.toLowerCase().includes(query);
+                return matchesCluster && matchesSearch;
+            });
+
+            renderTable(filtered);
+        }
+
+        searchInput.addEventListener('input', filterData);
+        clusterFilter.addEventListener('change', filterData);
+
+        // Initial render
+        renderTable(customers);
+
+        // Image Modal
+        function openModal(src) {
+            const modal = document.getElementById('imageModal');
+            const img = document.getElementById('modalImg');
+            img.src = src;
+            modal.style.display = 'flex';
+        }
+        function closeModal() {
+            document.getElementById('imageModal').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
